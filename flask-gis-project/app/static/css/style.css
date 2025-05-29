@@ -1,0 +1,583 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #403f48;
+    display: flex;
+    justify-content: center;
+    position: fixed; /* 使用fixed定位 */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+li {
+    float: left;
+}
+
+li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 15px 30px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+li a:hover {
+    background-color: #403f48;
+}
+
+/* 被选中时的样式 */
+li a:active,
+li a.active {
+    background-color: #eaecdecd;
+    color: white;
+    font-weight: bold;
+}
+
+/* 点击后的保持状态 */
+li a.active {
+    background-color: #596c68;
+    ;
+    box-shadow: 0 2px 4px #eaecdecd;
+}
+
+.search-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 50px;
+    background-color: transparent;
+    position: absolute;
+    top: 10px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.search-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    height: 32px; /* 添加固定高度 */
+}
+
+.search-form {
+    display: flex;
+    gap: 5px;
+    height: 100%; /* 使用100%继承父元素高度 */
+}
+
+.search-input {
+    padding: 5px;
+    width: 200px;
+    border: 1px solid #ccc;
+    background-color: #eaecdecd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    height: 100%; /* 使用100%继承父元素高度 */
+    box-sizing: border-box; /* 确保padding不会增加总高度 */
+}
+
+.search-button {
+    padding: 5px 10px;
+    background-color: #596c68;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    height: 100%; /* 使用100%继承父元素高度 */
+    box-sizing: border-box;
+}
+
+.filter-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    background-color: #eaecdecd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    height: 100%; /* 使用100%继承父元素高度 */
+    box-sizing: border-box;
+}
+
+#map-content {
+    position: relative;
+    height: 100vh;
+}
+
+.map-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.map-style-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #eaecde;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+/* 弹出窗口样式 */
+.route-popup {
+    position: absolute; /* 相对于父容器定位 */
+    top: calc(100% - 10px); /* 紧贴路线搜索框下方，增加 10px 间距 */
+    right: 50px; /* 与路线搜索框左对齐 */
+    width: 100%; /* 宽度与搜索框一致 */
+    max-width: 300px; /* 最大宽度限制 */
+    background: white; /* 背景色 */
+    border: 1px solid #ccc; /* 边框颜色 */
+    border-radius: 8px; /* 圆角 */
+    padding: 20px; /* 内边距 */
+    z-index: 1000; /* 确保在其他元素之上 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 添加阴影 */
+    animation: fadeIn 0.3s ease; /* 添加淡入动画 */
+    font-family: Arial, sans-serif; /* 设置字体 */
+}
+
+/* 弹出窗口标题样式 */
+.route-popup h4 {
+    margin: 0 0 15px 0; /* 标题底部间距 */
+    font-size: 16px; /* 标题字体大小 */
+    font-weight: bold; /* 标题加粗 */
+    color: #403f48; /* 标题颜色 */
+    border-bottom: 1px solid #e0e0e0; /* 标题下划线 */
+    padding-bottom: 8px; /* 下划线与标题的间距 */
+}
+
+/* 输入框样式 */
+.route-popup input[type="text"] {
+    width: 100%; /* 宽度占满父容器 */
+    padding: 6px; /* 内边距 */
+    margin-bottom: 5px; /* 输入框之间的间距 */
+    border: 1px solid #ccc; /* 边框颜色 */
+    border-radius: 3px; /* 圆角 */
+    font-size: 14px; /* 字体大小 */
+    box-sizing: border-box; /* 包括内边距和边框 */
+    transition: border-color 0.3s ease; /* 添加边框颜色过渡效果 */
+}
+
+.route-popup input[type="text"]:focus {
+    border-color: #596c68; /* 聚焦时的边框颜色 */
+    outline: none; /* 移除默认的聚焦样式 */
+    background-color: #f9f9f9; /* 聚焦时背景色 */
+}
+
+/* 单选按钮组样式 */
+.route-popup label {
+    display: inline-block;
+    padding: 6px;
+    margin-right: 15px; /* 单选按钮之间的间距 */
+    font-size: 14px; /* 字体大小 */
+    color: #403f48; /* 字体颜色 */
+    cursor: pointer; /* 鼠标悬停时显示手型 */
+}
+
+.route-popup input[type="radio"] {
+    margin-right: 5px; /* 单选按钮与文字之间的间距 */
+}
+
+/* 按钮样式 */
+.route-popup button {
+    padding: 8px 16px; /* 按钮内边距 */
+    background-color: #596c68; /* 按钮背景色 */
+    color: white; /* 按钮文字颜色 */
+    border: none; /* 移除边框 */
+    border-radius: 3px; /* 按钮圆角 */
+    cursor: pointer; /* 鼠标悬停时显示手型 */
+    font-size: 14px; /* 按钮字体大小 */
+    transition: background-color 0.3s ease; /* 背景色过渡效果 */
+    width: 100%; /* 按钮宽度占满父容器 */
+}
+
+.route-popup button:hover {
+    background-color: #403f48; /* 鼠标悬停时的背景色 */
+}
+
+/* 关闭按钮样式 */
+.route-popup #closeRoutePopup {
+    margin-top: 10px; /* 顶部间距 */
+    padding: 8px 16px; /* 按钮内边距 */
+    background-color: #e0e0e0; /* 关闭按钮背景色 */
+    font-size: 14px; /* 按钮字体大小 */
+    color: #333; /* 按钮文字颜色 */
+    border: none; /* 移除边框 */
+    border-radius: 3px; /* 按钮圆角 */
+    cursor: pointer; /* 鼠标悬停时显示手型 */
+    transition: background-color 0.3s ease; /* 背景色过渡效果 */
+    width: 100%; /* 按钮宽度占满父容器 */
+}
+
+.route-popup #closeRoutePopup:hover {
+    background-color: #ccc; /* 鼠标悬停时的背景色 */
+}
+
+/* 弹出窗口内容样式 */
+.route-popup div {
+    margin-bottom: 10px; /* 内容项之间的间距 */
+
+    color: #666; /* 内容文字颜色 */
+}
+
+/* 路径详细内容样式 */
+.route-detail {
+    font-size: 12px; /* 设置较小的字体大小 */
+    color: #666; /* 设置字体颜色为灰色 */
+    line-height: 1.5; /* 设置行高，增加可读性 */
+    margin-top: 6px; /* 与上方内容的间距 */
+    padding: 6px; /* 内边距 */
+    background-color: #f9f9f9; /* 设置背景色为浅灰色 */
+    border: 1px solid #ddd; /* 添加边框 */
+    border-radius: 3px; /* 设置圆角 */
+}
+
+
+/* 弹出窗口动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px); /* 从上方滑入 */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0); /* 回到原位 */
+    }
+}
+
+.map-style-label {
+    color: #403f48;
+    margin-right: 6px; /* 添加右边距，与下拉框保持间距 */
+    font-size: 0.9em; 
+    font-weight: bold; /* 设置字体加粗 */
+    display: inline-block; /* 保证标签与下拉框对齐 */
+    vertical-align: middle; /* 垂直居中对齐 */
+
+}
+
+.suggestions-container {
+    position: absolute;
+    top: 100%;  /* 确保在搜索框正下方 */
+    left: 0;
+    width: 80%;  /* 与搜索框同宽 */
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;  /* 移除顶部边框 */
+    border-radius: 0 0 4px 4px;  /* 只在底部添加圆角 */
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 9999;
+}
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+.suggestion-item:hover {
+    background: #f0f0f0;
+}
+
+.point-label {
+    position: fixed; /* 固定位置 */
+    bottom: 20px;
+    right: 60px;
+    z-index: 1000;
+    font-size: 14px;
+    font-weight: 600;
+    color: #596c68;
+}
+
+/* 信息窗体样式 */
+.info-window {
+    width: 300px;
+    overflow-y: auto;
+    padding: 15px; /* 进一步增加内边距，让内容更加宽松 */
+    box-sizing: border-box;
+    background-color: #fdfdfd; /* 采用更接近白色的柔和背景色 */
+    border: 1px solid #eaeaea; /* 使用更淡的边框颜色 */
+    border-radius: 10px; /* 增大圆角，使窗口更加圆润 */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* 调整阴影，使其更柔和 */
+    position: relative;
+    transition: all 0.3s ease; /* 添加过渡动画，使效果更平滑 */
+    max-height: 300px; /* 新增：最大高度，超出部分滚动 */
+    overflow-y: auto; /* 新增：超出部分滚动 */
+}
+
+/* 鼠标悬停在信息窗体上的效果 */
+.info-window:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); /* 悬停时加深阴影 */
+    transform: translateY(-3px); /* 悬停时上移更多，增强交互感 */
+}
+
+.info-window h4 {
+    margin: 0 0 15px 0; /* 增加标题底部间距，区分标题和内容 */
+    font-weight: 600;
+    color: #403f48; /* 加深标题颜色，使其更突出 */
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px; /* 增加下划线与标题的间距 */
+}
+
+.info-window p {
+    margin: 10px 0; /* 调整段落间距，使内容布局更合理 */
+    font-size: 12px; 
+    color: #666; /* 微调段落颜色，使其与整体风格更协调 */
+    line-height: 1.4; /* 进一步增加行高，提升可读性 */
+}
+
+/* 为小标题添加样式 */
+.info-window p::before {
+    font-weight: 600;
+    color: #403f48; /* 加深小标题颜色，与标题颜色呼应 */
+    margin-right: 6px; /* 增加小标题与内容的间距 */
+}
+
+/* 为每个小标题添加特定内容 */
+.info-window p:nth-of-type(1)::before {
+    content: '时代: ';
+}
+
+.info-window p:nth-of-type(2)::before {
+    content: '类型: ';
+}
+
+.info-window p:nth-of-type(3)::before {
+    content: '保护级别: ';
+}
+
+.info-window p:nth-of-type(4)::before {
+    content: '地址: ';
+}
+
+.info-window p:nth-of-type(5)::before {
+    content: '开放状态: ';
+}
+
+.info-window p:nth-of-type(6)::before {
+    content: '介绍: ';
+}
+
+.info-window p:nth-of-type(7)::before {
+    content: '其他信息: ';
+}
+
+/* 移除原来 HTML 中的小标题 */
+.info-window p {
+    text-indent: -3em; /* 调整缩进量，使小标题与内容对齐更美观 */
+    padding-left: 3em; /* 相应调整左内边距 */
+}
+
+/* 方案展示卡片样式 */
+.route-option {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px; /* 增加内边距 */
+    margin-bottom: 8px; /* 卡片之间的间距 */
+    border: 1px solid #ddd; /* 边框颜色 */
+    border-radius: 4px; /* 圆角 */
+    background-color: #f9f9f9; /* 背景色 */
+    cursor: pointer; /* 鼠标悬停时显示手型 */
+    transition: box-shadow 0.3s ease, transform 0.2s ease; /* 添加过渡效果 */
+}
+
+.route-option:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 鼠标悬停时添加阴影 */
+    transform: translateY(-1px); /* 鼠标悬停时轻微上移 */
+    background-color: #f4f4f4; /* 鼠标悬停时背景色变化 */
+}
+
+.route-option b {
+    font-size: 14px; /* 标题字体大小 */
+    color: #333; /* 标题颜色 */
+}
+
+.route-option span {
+    font-size: 12px; /* 详情字体大小 */
+    color: #666; /* 详情文字颜色 */
+}
+
+/* 方案分隔线 */
+.route-option:not(:last-child) {
+    border-bottom: 1px solid #eee; /* 卡片之间的分隔线 */
+}
+
+.route-option:hover {
+    background: #f3f8f3;
+}
+
+.stat-layout {
+  display: flex;
+  width: 100vw;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #f7f8fa;
+  overflow: hidden;
+  position: relative;
+  top: 0;
+  left: 0;
+}
+
+.stat-sidebar {
+  width: 260px;
+  min-width: 220px;
+  max-width: 320px;
+  height: 100%;
+  border-radius: 0;
+  border-right: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #e3eafc 0%, #f9f9f9 100%);
+  padding: 48px 28px 24px 28px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.stat-sidebar h3 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+  color: #2d3a4b;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.stat-sidebar select {
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #bfc8d6;
+  font-size: 15px;
+  background: #fff;
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+
+.stat-sidebar select:focus {
+  border-color: #4a90e2;
+  outline: none;
+}
+
+.stat-sidebar button {
+  width: 100%;
+  padding: 10px 0;
+  background: linear-gradient(90deg, #4a90e2 0%, #357ab8 100%);
+  color: #fff;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(74,144,226,0.08);
+  transition: background 0.2s;
+  letter-spacing: 2px;
+}
+
+.stat-sidebar button:hover {
+  background: linear-gradient(90deg, #357ab8 0%, #4a90e2 100%);
+}
+
+@media (max-width: 700px) {
+  .stat-sidebar {
+    min-width: 0;
+    width: 100vw;
+    max-width: 100vw;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    flex-direction: row;
+    gap: 16px;
+    padding: 18px 10px;
+    align-items: stretch;
+  }
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+#math-content {
+  position: fixed;
+  top: 50px; /* 导航栏高度 */
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 50px);
+  min-height: 0;
+  background: #f7f8fa;
+  z-index: 999;
+  margin: 0;
+  padding: 0;
+}
+
+.stat-map-container {
+  flex: 1 1 0;
+  position: relative;
+  background: #fff;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+#stat-chart {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #fff;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  z-index: 1;
+}
+
+.filter-panel { margin-bottom: 0px; }
+
+.category-btn.selected { background: #0078d7; color: #fff; border-color: #0078d7; }
+
+.filter-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    background-color: #eaecdecd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    height: 100%; /* 使用100%继承父元素高度 */
+    box-sizing: border-box;
+}
+
+.goto-btn {
+    padding: 2px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #596c68;
+    background: #596c68;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.goto-btn:hover {
+    background: #596c68;
+    color: #fff;
+    border-color: #596c68;
+}

@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页面</title>
+    <link rel="stylesheet" type="text/css" href="../static/css/style.css">
+    
+</head>
+<body>
+    <ul>
+        <li><a href="#map" class="map active">地图</a></li>
+        <li><a href="#math" class="math">统计数据</a></li>
+    </ul>
+    <div id="map-content">
+        <div class="search-container">
+            <div class="search-group">
+                <div class="filter-panel" style="display: flex; gap: 12px; align-items: center;">
+                    <select class="filter-select" id="filter-standard" style="width: 100%; height: 30px; box-sizing: border-box;">
+                        <option value="" disabled selected>筛选标准</option>
+                        <option value="option1">建成年代</option>
+                        <option value="option2">文物保护级别</option>
+                        <option value="option3">所在行政区</option>
+                        <option value="option4">文物类型</option>
+                        <option value="option5">清除筛选</option>
+                    </select>
+                    <select class="filter-select" id="filter-category" style="width: 100%; height: 30px; box-sizing: border-box;" disabled>
+                        <option value="" disabled selected>请选择类别</option>
+                    </select>
+                </div>
+                <form action="/search" method="get" class="search-form" style="position: relative;">
+                    <input type="text" name="query" placeholder="古建筑/文物..." class="search-input" id="searchInput" style="width: 100%; height: 30px; box-sizing: border-box;">
+                    <div id="suggestions" class="suggestions-container"></div>
+                    <button type="submit" class="search-button" style="height: 30px;width:60px">搜索</button>
+                </form>
+            </div>
+            <div class="map-controls">
+                <label for="mapStyleSelect" class="map-style-label" >地图风格</label>
+                <select class="map-style-select" id="mapStyleSelect">
+                    <option value="normal">标准</option>
+                    <option value="whitesmoke">远山黛</option>
+                    <option value="dark">幻影黑</option>
+                    <option value="light">月光银</option>
+                    <option value="fresh">草色青</option>
+                    <option value="grey">雅士灰</option>
+                    <option value="macaron">马卡龙</option>
+                    <option value="blue">靛青蓝</option>
+                    <option value="darkblue">极夜蓝</option>
+                    <option value="graffiti">涂鸦</option>
+                </select>
+                <form action="/search" method="get" class="search-form">
+                    <input type="text" name="query" placeholder="导航搜索..." class="search-input">
+                    <button type="submit" class="search-button">路线</button>
+                </form>
+                <div id="route-popup" class="route-popup" style="display:none;">
+                    <form id="routeForm" style="display:flex;flex-direction:column;gap:8px;position:relative;">
+                        <label>起点：<input type="text" id="routeStart" placeholder="输入起点"></label>
+                        <div id="routeStartSuggestions" class="suggestions-container"></div>
+                        <label>终点：<input type="text" id="routeEnd" placeholder="输入终点"></label>
+                        <div>
+                            <label><input type="radio" name="routeType" value="driving" checked>驾车</label>
+                            <label><input type="radio" name="routeType" value="transit">公交</label>
+                            <label><input type="radio" name="routeType" value="walking">步行</label>
+                        </div>
+                        <button type="submit">查询路线</button>
+                    </form>
+                    <div id="routeResult" style="max-height:200px;overflow:auto;margin-top:8px;"></div>
+                    <button id="closeRoutePopup">关闭</button>
+                </div>
+            </div>
+            <div class="point-label">
+                <label>
+                    <input type="checkbox" id="toggleMarkers">
+                    地图标注
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="math-content" style="display:none;">
+        <div class="stat-layout">
+            <div class="stat-sidebar">
+                <h3>统计类别</h3>
+                <select id="stat-category">
+                    <option value="dynasty">朝代</option>
+                    <option value="open_status">开放状态</option>
+                    <option value="type">类型</option>
+                    <option value="level">保护级别</option>
+                </select>
+                <h3>统计方式</h3>
+                <select id="stat-method">
+                    <option value="pie">饼图</option>
+                    <option value="bar">柱状图</option>
+                </select>
+                <button id="stat-run-btn">统计</button>
+            </div>
+            <div class="stat-map-container">
+                <div id="stat-chart">
+                    <div id="stat-chart-tip" style="color:#bbb;text-align:center;line-height:calc(100vh - 100px);font-size:20px;">
+                        请点击左侧"统计"按钮
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=a73a81548392a2004c44f3d7e2fec659"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 处理地图和统计数据的显示切换
+            const mapContent = document.getElementById('map-content');
+            const mathContent = document.getElementById('math-content');
+            const mapLink = document.querySelector('a.map');
+            const mathLink = document.querySelector('a.math');
+
+            mapLink.addEventListener('click', function() {
+                mapContent.style.display = 'block';
+                mathContent.style.display = 'none';
+            });
+
+            mathLink.addEventListener('click', function() {
+                mapContent.style.display = 'none';
+                mathContent.style.display = 'block';
+            });
+
+            // 默认显示地图内容
+            mapContent.style.display = 'block';
+            // 处理导航链接的active状态
+            const navLinks = document.querySelectorAll('ul li a');
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // 移除所有active类
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    // 为当前点击的链接添加active类
+                    this.classList.add('active');
+                });
+            });
+
+            const searchInput = document.getElementById('searchInput');
+            const suggestionsContainer = document.getElementById('suggestions');
+
+            // 新增：保存所有点和marker
+            window.allMarkers = [];
+            window.allPoints = [];
+
+            searchInput.addEventListener('input', function() {
+                const query = searchInput.value.trim();
+                if (query.length > 0) {
+                    fetch(`/suggest?query=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            suggestionsContainer.innerHTML = '';
+                            data.forEach(item => {
+                                const suggestion = document.createElement('div');
+                                suggestion.className = 'suggestion-item';
+                                suggestion.textContent = item;
+                                // 点击提示只显示该点
+                                suggestion.addEventListener('click', function() {
+                                    searchInput.value = item;
+                                    suggestionsContainer.innerHTML = '';
+                                    // 只显示被点击的点
+                                    window.allMarkers.forEach((marker, idx) => {
+                                        if (window.allPoints[idx].名称 === item) {
+                                            marker.show();
+                                            window.map.setCenter([window.allPoints[idx].longitude, window.allPoints[idx].latitude]);
+                                            window.map.setZoom(15);
+                                        } else {
+                                            marker.hide();
+                                        }
+                                    });
+                                });
+                                suggestionsContainer.appendChild(suggestion);
+                            });
+                            suggestionsContainer.style.display = 'block';
+                        });
+                } else {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
+
+            // 点击页面其他地方时隐藏提示
+            document.addEventListener('click', function(e) {
+                if (!suggestionsContainer.contains(e.target) && e.target !== searchInput) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
+            // 点击搜索框时重新显示提示框
+            searchInput.addEventListener('focus', function() {
+                if (searchInput.value.trim().length > 0) {
+                    suggestionsContainer.style.display = 'block';
+                }
+            });
+
+            // 新增：搜索表单提交时筛选相关点
+            document.querySelector('.search-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (!query) {
+                    // 显示所有点
+                    window.allMarkers.forEach(marker => marker.show());
+                    return;
+                }
+                window.allMarkers.forEach((marker, idx) => {
+                    const p = window.allPoints[idx];
+                    if (
+                        (p.名称 && p.名称.includes(query)) ||
+                        (p.类型 && p.类型.includes(query)) ||
+                        (p.地址 && p.地址.includes(query)) ||
+                        (p.介绍 && p.介绍.includes(query))
+                    ) {
+                        marker.show();
+                    } else {
+                        marker.hide();
+                    }
+                });
+            });
+
+            // 导航功能：弹窗、路线查询
+            // 1. 打开弹窗
+            document.querySelectorAll('.search-form')[1].addEventListener('submit', function(e) {
+                e.preventDefault();
+                document.getElementById('route-popup').style.display = 'block';
+                // 自动填充终点
+                const query = this.querySelector('input[name="query"]').value.trim();
+                document.getElementById('routeEnd').value = query;
+            });
+            // 2. 关闭弹窗
+            document.getElementById('closeRoutePopup').onclick = function() {
+                document.getElementById('route-popup').style.display = 'none';
+                document.getElementById('routeResult').innerHTML = '';
+                if(window.routeLine) { window.map.remove(window.routeLine); window.routeLine = null; }
+            };
+            // 3. 路线查询
+            document.getElementById('routeForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                let start = document.getElementById('routeStart').value.trim();
+                const end = document.getElementById('routeEnd').value.trim();
+                const type = document.querySelector('input[name="routeType"]:checked').value;
+                let startLoc, endLoc;
+
+                if (!end) {
+                    alert('请输入终点');
+                    return;
+                }
+
+                // 如果起点为空，尝试获取用户定位
+                let startIsLngLat = false;
+                if (!start) {
+                    document.getElementById('routeResult').innerHTML = '正在获取当前位置...';
+                    try {
+                        await new Promise((resolve, reject) => {
+                            window.map.plugin('AMap.Geolocation', function() {
+                                var geolocation = new AMap.Geolocation({
+                                    enableHighAccuracy: true,
+                                    timeout: 10000,
+                                    showButton: false,
+                                    convert: true,
+                                    useNative: true,
+                                    noIpLocate: 0,
+                                    noGeoLocation: 0
+                                });
+                                geolocation.getCurrentPosition(function(status, result) {
+                                    if (status === 'complete' && result.position) {
+                                        startLoc = result.position.lng + ',' + result.position.lat;
+                                        startIsLngLat = true;
+                                        resolve();
+                                    } else {
+                                        alert('定位失败，请手动输入起点');
+                                        reject();
+                                    }
+                                });
+                            });
+                        });
+                    } catch {
+                        document.getElementById('routeResult').innerHTML = '';
+                        return;
+                    }
+                } else {
+                    // 用户输入了起点，需地理编码
+                    let startRes = await fetch(`/api/geocode?address=${encodeURIComponent(start)}`).then(r=>r.json());
+                    if (!startRes.geocodes || !startRes.geocodes.length) {
+                        document.getElementById('routeResult').innerHTML = '起点地址解析失败，请检查输入。';
+                        return;
+                    }
+                    startLoc = startRes.geocodes[0].location; // 'lng,lat'
+                }
+
+                document.getElementById('routeResult').innerHTML = '正在查询...';
+
+                // 终点地理编码
+                let endRes = await fetch(`/api/geocode?address=${encodeURIComponent(end)}`).then(r=>r.json());
+                if (!endRes.geocodes || !endRes.geocodes.length) {
+                    document.getElementById('routeResult').innerHTML = '终点地址解析失败，请检查输入。';
+                    return;
+                }
+                endLoc = endRes.geocodes[0].location;
+
+                // 路线规划
+                let routeRes = await fetch(`/api/route?origin=${startLoc}&destination=${endLoc}&mode=${type}`).then(r=>r.json());
+
+                // 4. 展示多条路线方案
+                let routeListHtml = '';
+                let routeList = [];
+                if (type === 'driving' && routeRes.route && routeRes.route.paths && routeRes.route.paths.length) {
+                    routeList = routeRes.route.paths;
+                    routeListHtml = routeList.map((path, idx) => {
+                        return `
+                            <div class="route-option" data-idx="${idx}">
+                                <b>方案 ${idx + 1}</b>
+                                <span>距离：${(path.distance / 1000).toFixed(1)} km</span>
+                                <span>预计时间：${Math.round(path.duration / 60)} 分钟</span>
+                            </div>`;
+                    }).join('');
+                } else if (type === 'walking' && routeRes.route && routeRes.route.paths && routeRes.route.paths.length) {
+                    routeList = routeRes.route.paths;
+                    routeListHtml = routeList.map((path, idx) => {
+                        return `
+                            <div class="route-option" data-idx="${idx}">
+                                <b>方案 ${idx + 1}</b>
+                                <span>距离：${(path.distance / 1000).toFixed(1)} km</span>
+                                <span>预计时间：${Math.round(path.duration / 60)} 分钟</span>
+                            </div>`;
+                    }).join('');
+                } else if (type === 'transit' && routeRes.route && routeRes.route.transits && routeRes.route.transits.length) {
+                    routeList = routeRes.route.transits;
+                    routeListHtml = routeList.map((transit, idx) => {
+                        let segments = [];
+                        if (transit.segments) {
+                            segments = transit.segments.map(seg => {
+                                if (seg.bus && seg.bus.buslines && seg.bus.buslines.length) {
+                                    return seg.bus.buslines.map(line => line.name).join(' → ');
+                                }
+                                if (seg.walking && seg.walking.distance > 0) {
+                                    return `步行 ${seg.walking.distance} 米`;
+                                }
+                                return '';
+                            }).filter(Boolean);
+                        }
+                        return `
+                            <div class="route-option" data-idx="${idx}">
+                                <b>方案 ${idx + 1}</b>
+                                <span>${segments.join(' → ')}</span>
+                                <span>距离：${(transit.distance / 1000).toFixed(1)} km</span>
+                                <span>预计时间：${Math.round(transit.duration / 60)} 分钟</span>
+                            </div>`;
+                    }).join('');
+                } else {
+                    document.getElementById('routeResult').innerHTML = '未查询到有效路线。';
+                    if(window.routeLine) { window.map.remove(window.routeLine); window.routeLine = null; }
+                    return;
+                }
+
+                document.getElementById('routeResult').innerHTML = `<div><b>请选择路线方案：</b></div>${routeListHtml}`;
+
+                // 5. 绑定点击事件，显示详细内容和地图高亮
+                document.querySelectorAll('.route-option').forEach(opt => {
+                    // 每个方案后插入一个详情div
+                    const detailDiv = document.createElement('div');
+                    detailDiv.className = 'route-detail';
+                    detailDiv.style.margin = '8px 0 8px 0';
+                    detailDiv.style.display = 'none'; // 默认隐藏
+                    opt.parentNode.insertBefore(detailDiv, opt.nextSibling);
+                    opt.onclick = function() {
+                        let idx = parseInt(this.getAttribute('data-idx'));
+                        // 清除旧路线
+                        if(window.routeLine) { 
+                            if(Array.isArray(window.routeLine)) window.routeLine.forEach(line=>window.map.remove(line));
+                            else window.map.remove(window.routeLine);
+                            window.routeLine = null;
+                        }
+                        // 如果当前详情已展开，则收起
+                        if (detailDiv.style.display !== 'none' && detailDiv.innerHTML) {
+                            detailDiv.innerHTML = '';
+                            detailDiv.style.display = 'none';
+                            return;
+                        }
+                        // 清空所有详情并隐藏
+                        document.querySelectorAll('.route-detail').forEach(div => { div.innerHTML = ''; div.style.display = 'none'; });
+                        let detailHtml = '';
+                        if (type === 'driving' || type === 'walking') {
+                            const path = routeList[idx];
+                            detailHtml = path.steps.map((step, i) => `<div>${i+1}. ${step.instruction}</div>`).join('');
+                            // 地图画线
+                            const polyline = new AMap.Polyline({
+                                path: path.steps.flatMap(step => step.polyline.split(';').map(str => str.split(',').map(Number))),
+                                strokeColor: type === 'driving' ? '#0057FF' : '#00CC99',
+                                strokeWeight: 8,
+                                strokeOpacity: 0.9,
+                                strokeStyle: type === 'walking' ? 'dashed' : 'solid',
+                                lineJoin: 'round',
+                                lineCap: 'round',
+                                zIndex: 120
+                            });
+                            window.map.add(polyline);
+                            window.routeLine = polyline;
+                            window.map.setFitView([polyline]);
+                        } else if (type === 'transit') {
+                            const transit = routeList[idx];
+                            detailHtml = transit.segments.map((seg, i) => {
+                                let segHtml = '';
+                                if (seg.walking && seg.walking.steps && seg.walking.steps.length) {
+                                    segHtml += seg.walking.steps.map((step, j) => `<div>步行${step.distance}米：${step.instruction}</div>`).join('');
+                                }
+                                if (seg.bus && seg.bus.buslines && seg.bus.buslines.length) {
+                                    segHtml += seg.bus.buslines.map(line => `<div>乘坐${line.name}，${line.via_num}站</div>`).join('');
+                                }
+                                if (seg.railway && seg.railway.spaces && seg.railway.spaces.length) {
+                                    segHtml += seg.railway.spaces.map(space => `<div>乘坐${space.name}，${space.station_num}站</div>`).join('');
+                                }
+                                return segHtml;
+                            }).join('');
+
+                            // 公交路线绘制
+                            let polylines = [];
+                            transit.segments.forEach(seg => {
+                                // 步行段
+                                if (seg.walking && seg.walking.steps) {
+                                    seg.walking.steps.forEach(step => {
+                                        if (step.polyline) {
+                                            let path = step.polyline.split(';').map(str => str.split(',').map(Number));
+                                            polylines.push({
+                                                path: path,
+                                                color: '#00CC99',
+                                                style: 'dashed',
+                                                weight: 6
+                                            });
+                                        }
+                                    });
+                                }
+                                // 公交段
+                                if (seg.bus && seg.bus.buslines) {
+                                    seg.bus.buslines.forEach(line => {
+                                        if (line.polyline) {
+                                            let path = line.polyline.split(';').map(str => str.split(',').map(Number));
+                                            polylines.push({
+                                                path: path,
+                                                color: '#0074D9', // 公交蓝
+                                                style: 'solid',
+                                                weight: 8
+                                            });
+                                        }
+                                    });
+                                }
+                                // 地铁段
+                                if (seg.railway && seg.railway.spaces) {
+                                    seg.railway.spaces.forEach(space => {
+                                        if (space.polyline) {
+                                            let path = space.polyline.split(';').map(str => str.split(',').map(Number));
+                                            polylines.push({
+                                                path: path,
+                                                color: '#FF9900', // 地铁橙
+                                                style: 'dashed',
+                                                weight: 8
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                            // 清除旧线
+                            if(window.routeLine) { 
+                                if(Array.isArray(window.routeLine)) window.routeLine.forEach(line=>window.map.remove(line));
+                                else window.map.remove(window.routeLine);
+                                window.routeLine = null;
+                            }
+                            window.routeLine = [];
+                            polylines.forEach(item => {
+                                let polyline = new AMap.Polyline({
+                                    path: item.path,
+                                    strokeColor: item.color,
+                                    strokeWeight: item.weight,
+                                    strokeOpacity: 0.9,
+                                    strokeStyle: item.style,
+                                    lineJoin: 'round',
+                                    lineCap: 'round',
+                                    zIndex: 120
+                                });
+                                window.map.add(polyline);
+                                window.routeLine.push(polyline);
+                            });
+                            if (window.routeLine.length) window.map.setFitView(window.routeLine);
+                        }
+                        detailDiv.innerHTML = `<div style=\"margin-top:8px;\"><b>路线详情：</b></div>${detailHtml}`;
+                        detailDiv.style.display = 'block';
+                    }
+                });
+            });
+
+            // 初始化高德地图 Autocomplete 服务
+            AMap.plugin('AMap.AutoComplete', function () {
+                const autoComplete = new AMap.AutoComplete({
+                    city: '北京市',
+                    input: 'routeStart'
+                });
+                autoComplete.on('select', function (event) {
+                    if (event.poi && event.poi.location) {
+                        document.getElementById('routeStart').value = event.poi.name;
+                    }
+                });
+
+                const autoCompleteEnd = new AMap.AutoComplete({
+                    city: '北京市',
+                    input: 'routeEnd'
+                });
+                autoCompleteEnd.on('select', function (event) {
+                    if (event.poi && event.poi.location) {
+                        document.getElementById('routeEnd').value = event.poi.name;
+                    }
+                });
+            });
+
+            const routeStartInput = document.getElementById('routeStart');
+            const suggestionsBox = document.getElementById('routeStartSuggestions');
+
+            // 保证 suggestionsBox 绝对定位在输入框下方
+            routeStartInput.addEventListener('input', function() {
+                const keyword = routeStartInput.value.trim();
+                if (!keyword) {
+                    suggestionsBox.style.display = 'none';
+                    return;
+                }
+                // 调用高德输入提示服务
+                fetch(`https://restapi.amap.com/v3/assistant/inputtips?key=a73a81548392a2004c44f3d7e2fec659&keywords=${encodeURIComponent(keyword)}&city=北京市&datatype=all`)
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('高德输入提示返回：', data);
+                        suggestionsBox.innerHTML = '';
+                        if (data.tips && data.tips.length) {
+                            data.tips.forEach(tip => {
+                                if (!tip.name) return;
+                                const div = document.createElement('div');
+                                div.className = 'suggestion-item';
+                                div.textContent = tip.name + (tip.district ? '（' + tip.district + '）' : '');
+                                div.addEventListener('click', function() {
+                                    routeStartInput.value = tip.name;
+                                    suggestionsBox.style.display = 'none';
+                                });
+                                suggestionsBox.appendChild(div);
+                            });
+                            suggestionsBox.style.display = 'block';
+                        } else {
+                            suggestionsBox.style.display = 'none';
+                        }
+                    });
+            });
+
+            // 点击外部隐藏提示
+            document.addEventListener('click', function(e) {
+                if (!suggestionsBox.contains(e.target) && e.target !== routeStartInput) {
+                    suggestionsBox.style.display = 'none';
+                }
+            });
+
+            // 输入框聚焦时显示提示
+            routeStartInput.addEventListener('focus', function() {
+                if (suggestionsBox.innerHTML.trim()) {
+                    suggestionsBox.style.display = 'block';
+                }
+            });
+
+            document.getElementById('stat-run-btn').addEventListener('click', function() {
+                const category = document.getElementById('stat-category').value;
+                const method = document.getElementById('stat-method').value;
+                fetch(`/api/statistics?category=${category}&method=${method}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        // 清除旧图层（如有）
+                        if(window.statMapLayer) {
+                            if(Array.isArray(window.statMapLayer)) {
+                                window.statMapLayer.forEach(layer => window.statMap.remove(layer));
+                            } else {
+                                window.statMap.remove(window.statMapLayer);
+                            }
+                            window.statMapLayer = null;
+                        }
+                        // 渲染ECharts统计图
+                        let chartDom = document.getElementById('stat-chart');
+                        if (echarts.getInstanceByDom(chartDom)) {
+                            echarts.getInstanceByDom(chartDom).dispose();
+                        }
+                        let myChart = echarts.init(chartDom);
+                        if(method === 'bar') {
+                            // 构造series
+                            let series = data.categories.map((cat, idx) => ({
+                                name: cat,
+                                type: 'bar',
+                                stack: 'total',
+                                data: data.matrix.map(row => row[idx])
+                            }));
+                            let option = {
+                                tooltip: { trigger: 'axis' },
+                                legend: {
+                                    type: 'scroll',
+                                    orient: 'horizontal',
+                                    top: 60,
+                                    data: data.categories,
+                                    textStyle: { fontSize: 12 }
+                                },
+                                grid: {
+                                    top: 100,
+                                    left: 60,
+                                    right: 30,
+                                    bottom: 60,
+                                    containLabel: true
+                                },
+                                xAxis: {
+                                    type: 'category',
+                                    data: data.districts,
+                                    axisLabel: {
+                                        interval: 0,
+                                        rotate: 30,
+                                        fontSize: 12
+                                    }
+                                },
+                                yAxis: { type: 'value' },
+                                series: series,
+                                animation: true,
+                                animationDuration: 800
+                            };
+                            myChart.setOption(option);
+                        } else if(method === 'pie') {
+                            // 合计所有区的各类别数量
+                            let sums = data.categories.map((cat, idx) =>
+                                data.matrix.reduce((sum, row) => sum + row[idx], 0)
+                            );
+                            let option = {
+                                tooltip: { trigger: 'item' },
+                                legend: { orient: 'vertical', left: 'left', data: data.categories },
+                                series: [{
+                                    name: '文物类别分布',
+                                    type: 'pie',
+                                    radius: '60%',
+                                    label: { formatter: '{b}: {d}%' },
+                                    data: data.categories.map((cat, idx) => ({
+                                        name: cat,
+                                        value: sums[idx]
+                                    }))
+                                }]
+                            };
+                            myChart.setOption(option);
+                        }
+                        document.getElementById('stat-chart-tip')?.remove();
+                    });
+            });
+
+            const filterStandard = document.getElementById('filter-standard');
+            const filterCategory = document.getElementById('filter-category');
+            let allCategories = {};
+
+            // 获取所有类别
+            fetch('/api/categories')
+                .then(r => r.json())
+                .then(data => {
+                    allCategories = data;
+                });
+
+            // 一级菜单变化时，更新二级菜单
+            filterStandard.addEventListener('change', function() {
+                const standard = this.value;
+
+                // 清除筛选
+                if (standard === 'option5') {
+                    // 1. 重置二级菜单
+                    filterCategory.innerHTML = '<option value="" disabled selected>请选择类别</option>';
+                    filterCategory.disabled = true;
+                    // 2. 显示所有点
+                    window.allMarkers.forEach(marker => marker.show());
+                    // 3. 可选：重置一级菜单为"筛选标准"
+                    this.selectedIndex = 0; // 如果想自动回到"筛选标准"
+                    return;
+                }
+
+                // 其余标准的正常逻辑
+                filterCategory.innerHTML = '<option value="" disabled selected>请选择类别</option>';
+                let catList = [];
+                if (standard === 'option1') catList = allCategories.dynasty || [];
+                if (standard === 'option2') catList = allCategories.level || [];
+                if (standard === 'option3') catList = allCategories.location || [];
+                if (standard === 'option4') catList = allCategories.type || [];
+                catList.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = cat;
+                    filterCategory.appendChild(opt);
+                });
+                filterCategory.disabled = catList.length === 0;
+            });
+
+            // 二级菜单变化时，筛选地图点
+            filterCategory.addEventListener('change', function() {
+                const standard = filterStandard.value;
+                const cat = this.value;
+                window.allMarkers.forEach((marker, idx) => {
+                    const p = window.allPoints[idx];
+                    let match = false;
+                    if (standard === 'option1' && p.时代 && p.时代.includes(cat)) match = true;
+                    if (standard === 'option2' && p.级别 && p.级别 === cat) match = true;
+                    if (standard === 'option3' && p.所在区 && p.所在区.includes(cat)) match = true;
+                    if (standard === 'option4' && p.类型 && p.类型 === cat) match = true;
+                    if (match) marker.show();
+                    else marker.hide();
+                });
+            });
+        });
+    </script>
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            // 创建地图实例
+            var mapContainer = document.createElement('div');
+            mapContainer.id = 'container';
+            mapContainer.style.width = '100%';
+            mapContainer.style.height = '100%';
+            document.getElementById('map-content').appendChild(mapContainer);
+
+            // 底图样式定义
+            const mapStyles = {
+                normal: 'amap://styles/normal',
+                whitesmoke: 'amap://styles/whitesmoke',
+                dark: 'amap://styles/dark',
+                light: 'amap://styles/light',
+                fresh: 'amap://styles/fresh',
+                grey: 'amap://styles/grey',
+                macaron: 'amap://styles/macaron',
+                blue: 'amap://styles/blue',
+                darkblue: 'amap://styles/darkblue',
+                graffiti: 'amap://styles/graffiti'
+            };
+
+            window.map = new AMap.Map("container", {
+                pitch: 0,
+                viewMode: '3D',
+                zoom: 11,
+                center: [116.397428, 39.90923],
+                resizeEnable: true,
+                zooms: [2, 20],
+                mapStyle: 'amap://styles/normal',
+                features: ['bg', 'road', 'building'] // 默认显示点标注
+            });
+
+            // 监听复选框状态变化
+            const toggleMarkersCheckbox = document.getElementById('toggleMarkers');
+            toggleMarkersCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // 显示点标注
+                    window.map.setFeatures(['bg', 'road', 'building', 'point']);
+                } else {
+                    // 隐藏点标注
+                    window.map.setFeatures(['bg', 'road', 'building']);
+                }
+            });
+
+            // 引入比例尺插件、定位插件
+            AMap.plugin([
+                'AMap.Scale',
+                'AMap.Geolocation',
+                'AMap.ControlBar',
+                'AMap.ToolBar'
+            ], function() {
+                window.map.addControl(new AMap.Scale());
+                window.map.addControl(new AMap.Geolocation());
+                window.map.addControl(new AMap.ToolBar({
+                    showZoomBar: true, //是否显示缩放控件
+                    showControlButton: true, //是否显示控制按钮
+                    position: {left: '40px',bottom: '100px'}
+                }));
+                window.map.addControl(new AMap.ControlBar({
+                    showZoomBar: true, //是否显示缩放控件
+                    showControlButton: true, //是否显示控制按钮
+                    position: {left: '10px',bottom: '200px'}
+                }));
+            });
+
+            // 放在 fetch('/api/points') 之前
+            let infoWindow = null;
+            let infoWindowTimer = null;
+            let isMouseOnMarker = false;
+            let isMouseOnInfo = false;
+
+            fetch('/api/points')
+                .then(response => response.json())
+                .then(data => {
+                    if (!Array.isArray(data)) {
+                        throw new Error('Expected an array but got something else');
+                    }
+                    data.forEach(point => {
+                        // 移除 title 属性，防止高德自带悬停提示
+                        const marker = new AMap.Marker({
+                            position: [point.longitude, point.latitude],
+                            map: window.map,
+                            icon: new AMap.Icon({
+                                size: new AMap.Size(20, 20),
+                                image: '../static/image/pink.png',
+                                imageSize: new AMap.Size(20, 20)
+                            })
+                        });
+
+                        const infoContent = document.createElement('div');
+                        infoContent.className = 'info-window';
+                        infoContent.innerHTML = `
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h4 style="margin:0;">${point.名称}</h4>
+                                <button class="goto-btn">Go</button>
+                            </div>
+                            <p> ${point.时代 || '无'}</p>
+                            <p> ${point.类型 || '无'}</p>
+                            <p> ${point.级别 || '无'}</p>
+                            <p>${point.地址 || '无'}</p>
+                            <p> ${point.开放状态 || '无'}</p>
+                            <p>${point.介绍 || '无'}</p>
+                        `;
+
+                        // 按钮事件绑定
+                        setTimeout(() => {
+                            const gotoBtn = infoContent.querySelector('.goto-btn');
+                            if (gotoBtn) {
+                                gotoBtn.onclick = function(e) {
+                                    e.stopPropagation();
+                                    // 显示导航弹窗
+                                    document.getElementById('route-popup').style.display = 'block';
+                                    // 自动填充终点
+                                    document.getElementById('routeEnd').value = point.名称 || '';
+                                };
+                            }
+                        }, 0);
+
+                        let hoverTimer = null;
+
+                        marker.on('mouseover', function() {
+                            isMouseOnMarker = true;
+                            hoverTimer = setTimeout(() => {
+                                if (infoWindow) infoWindow.close();
+                                infoWindow = new AMap.InfoWindow({
+                                    isCustom: true,
+                                    content: infoContent,
+                                    offset: new AMap.Pixel(180, 200), // 偏移量
+                                    autoMove: true // 自动调整窗体位置
+                                });
+                                infoWindow.open(window.map, marker.getPosition());
+
+                                // MutationObserver 监听 infoWindow 出现并绑定事件
+                                const observer = new MutationObserver(() => {
+                                    const infoEls = document.querySelectorAll('[class*=amap-info]');
+                                    infoEls.forEach(el => {
+                                        if (!el.hasListener) {
+                                            el.addEventListener('mouseenter', () => {
+                                                isMouseOnInfo = true;
+                                                if (infoWindowTimer) clearTimeout(infoWindowTimer);
+                                            });
+                                            el.addEventListener('mouseleave', () => {
+                                                isMouseOnInfo = false;
+                                                if (infoWindowTimer) clearTimeout(infoWindowTimer);
+                                                infoWindowTimer = setTimeout(() => {
+                                                    if (!isMouseOnMarker && !isMouseOnInfo && infoWindow) {
+                                                        infoWindow.close();
+                                                    }
+                                                }, 200);
+                                            });
+                                            // 彻底阻止地图缩放，强制内容滚动
+                                            el.addEventListener('wheel', function(e) {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                el.scrollTop += e.deltaY;
+                                            }, { passive: false });
+                                            el.style.pointerEvents = 'auto';
+                                            el.hasListener = true;
+                                        }
+                                    });
+                                });
+                                observer.observe(document.body, { childList: true, subtree: true });
+                                setTimeout(() => observer.disconnect(), 2000);
+                            }, 600); // 0.6秒延迟
+                        });
+
+                        marker.on('mouseout', function() {
+                            isMouseOnMarker = false;
+                            if (hoverTimer) {
+                                clearTimeout(hoverTimer);
+                                hoverTimer = null;
+                            }
+                            if (infoWindowTimer) clearTimeout(infoWindowTimer);
+                            infoWindowTimer = setTimeout(() => {
+                                if (!isMouseOnMarker && !isMouseOnInfo && infoWindow) {
+                                    infoWindow.close();
+                                }
+                            }, 200);
+                        });
+
+                        // 新增：保存marker和点
+                        window.allMarkers.push(marker);
+                        window.allPoints.push(point);
+                    });
+                });
+
+            // 底图切换事件监听
+            const mapStyleSelect = document.getElementById('mapStyleSelect');
+            mapStyleSelect.addEventListener('change', function() {
+                const selectedStyle = this.value;
+                window.map.setMapStyle(mapStyles[selectedStyle]);
+            });
+
+            // 设置默认选中项
+            mapStyleSelect.value = 'normal';
+            const mapLink = document.querySelector('a.map');
+            const mathLink = document.querySelector('a.math');
+            mapLink.addEventListener('click', function() {
+                mapContainer.style.display = 'block'; // 显示地图
+            });
+            mathLink.addEventListener('click', function() {
+                mapContainer.style.display = 'none'; // 隐藏地图
+            });
+            mapContainer.style.display = 'block';
+        });
+    </script>
+
+    </body>
+</html>
